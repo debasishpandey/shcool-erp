@@ -5,7 +5,7 @@ import SuperAdminLogin from '../pages/auth/SuperAdminLogin';
 import SuperAdminLayout from '../components/layout/SuperAdminLayout';
 import SuperAdminDashboard from '../pages/super-admin/SuperAdminDashboard';
 import Tenants from '../pages/super-admin/Tenants';
-
+import { UIDemo } from '../pages/dev/UIDemo';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -25,6 +25,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Navigate to="/super-admin" replace />} />
       <Route path="/super-admin/login" element={<SuperAdminLogin />} />
+      <Route path="/dev/ui-demo" element={<UIDemo />} />
       
       <Route path="/super-admin" element={
         <ProtectedRoute>
