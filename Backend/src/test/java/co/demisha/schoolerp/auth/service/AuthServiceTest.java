@@ -116,4 +116,84 @@ class AuthServiceTest {
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
     }
+
+    @Test
+    void login_SuperAdmin_Success() {
+        LoginRequest request = new LoginRequest();
+        request.setUsername("superadmin");
+        request.setPassword("password");
+        // No tenant code provided
+
+        User superAdmin = User.builder()
+                .id(2L)
+                .username("superadmin")
+                .password("encoded_password")
+                .role(Role.SUPER_ADMIN)
+                .tenant(null)
+                .active(true)
+                .build();
+
+        when(userRepository.findByUsernameAndTenantIsNull("superadmin")).thenReturn(Optional.of(superAdmin));
+        when(passwordEncoder.matches("password", "encoded_password")).thenReturn(true);
+        when(jwtService.generateToken(anyLong(), anyString(), isNull(), any(Role.class))).thenReturn("super-jwt-token");
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        LoginResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("super-jwt-token", response.getAccessToken());
+        assertNull(response.getUser().getTenantId());
+    }
+
+    @Test
+    void login_InactiveUser_ThrowsException() {
+        user.setActive(false);
+        LoginRequest request = new LoginRequest();
+        request.setUsername("admin");
+        request.setPassword("password");
+        request.setTenantCode("ABC");
+
+        when(userRepository.findByUsernameAndTenant_Code("admin", "ABC")).thenReturn(Optional.of(user));
+
+        assertThrows(BadCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void refreshToken_Success() {
+        co.demisha.schoolerp.auth.dto.TokenRefreshRequest request = new co.demisha.schoolerp.auth.dto.TokenRefreshRequest();
+        request.setRefreshToken("valid-refresh-token");
+
+        RefreshToken token = RefreshToken.builder()
+                .token("valid-refresh-token")
+                .user(user)
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .revoked(false)
+                .build();
+
+        when(refreshTokenRepository.findByToken("valid-refresh-token")).thenReturn(Optional.of(token));
+        when(jwtService.generateToken(anyLong(), anyString(), anyLong(), any(Role.class))).thenReturn("new-jwt-token");
+
+        LoginResponse response = authService.refreshToken(request);
+
+        assertNotNull(response);
+        assertEquals("new-jwt-token", response.getAccessToken());
+    }
+
+    @Test
+    void refreshToken_InactiveUser_ThrowsException() {
+        user.setActive(false);
+        co.demisha.schoolerp.auth.dto.TokenRefreshRequest request = new co.demisha.schoolerp.auth.dto.TokenRefreshRequest();
+        request.setRefreshToken("valid-refresh-token");
+
+        RefreshToken token = RefreshToken.builder()
+                .token("valid-refresh-token")
+                .user(user)
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .revoked(false)
+                .build();
+
+        when(refreshTokenRepository.findByToken("valid-refresh-token")).thenReturn(Optional.of(token));
+
+        assertThrows(BadCredentialsException.class, () -> authService.refreshToken(request));
+    }
 }
