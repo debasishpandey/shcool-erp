@@ -6,6 +6,8 @@ import SuperAdminLayout from '../components/layout/SuperAdminLayout';
 import SuperAdminDashboard from '../pages/super-admin/SuperAdminDashboard';
 import Tenants from '../pages/super-admin/Tenants';
 import { UIDemo } from '../pages/dev/UIDemo';
+import Students from '../pages/school-admin/Students';
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -35,6 +37,16 @@ const AppRoutes = () => {
         <Route index element={<SuperAdminDashboard />} />
         <Route path="tenants" element={<Tenants />} />
         <Route path="settings" element={<div>Settings Component Placeholder</div>} />
+      </Route>
+
+      {/* School Admin Routes using the same layout */}
+      <Route path="/school-admin" element={
+        <ProtectedRoute>
+          <SuperAdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/school-admin/students" replace />} />
+        <Route path="students" element={<Students />} />
       </Route>
     </Routes>
   );

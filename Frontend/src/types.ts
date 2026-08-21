@@ -77,3 +77,45 @@ export interface TenantCreateRequest {
 export interface TenantUpdateRequest extends TenantCreateRequest {
   logoUrl?: string;
 }
+
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type StudentStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface StudentResponse {
+  id: number;
+  admissionNumber: string;
+  name: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  fatherName?: string;
+  motherName?: string;
+  mobileNumber?: string;
+  address?: string;
+  admissionDate?: string;
+  status: StudentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentCreateRequest {
+  admissionNumber: string;
+  name: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  fatherName?: string;
+  motherName?: string;
+  mobileNumber?: string;
+  address?: string;
+  admissionDate?: string;
+}
+
+export interface StudentUpdateRequest {
+  name: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  fatherName?: string;
+  motherName?: string;
+  mobileNumber?: string;
+  address?: string;
+  admissionDate?: string;
+}

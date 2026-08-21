@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, LayoutDashboard, School, Settings, LogOut, User as UserIcon } from 'lucide-react';
+import { Menu, X, LayoutDashboard, School, Settings, LogOut, User as UserIcon, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const SuperAdminLayout = () => {
@@ -13,9 +13,15 @@ const SuperAdminLayout = () => {
     navigate('/super-admin/login');
   };
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  
   const navItems = [
     { name: 'Dashboard', path: '/super-admin', icon: LayoutDashboard },
-    { name: 'Schools', path: '/super-admin/tenants', icon: School },
+    ...(isSuperAdmin ? [
+      { name: 'Schools', path: '/super-admin/tenants', icon: School }
+    ] : [
+      { name: 'Students', path: '/school-admin/students', icon: Users }
+    ]),
     { name: 'Settings', path: '/super-admin/settings', icon: Settings },
   ];
 
