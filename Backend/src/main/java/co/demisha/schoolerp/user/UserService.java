@@ -41,7 +41,7 @@ public class UserService {
     public UserResponse createUser(UserCreateRequest request) {
         Long tenantId = getTenantIdOrThrow();
         
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsernameAndTenantId(request.getUsername(), tenantId)) {
             throw new IllegalArgumentException("Username already exists in the system");
         }
 

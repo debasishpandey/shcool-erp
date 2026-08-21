@@ -77,8 +77,9 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest();
         request.setUsername("admin");
         request.setPassword("password");
+        request.setTenantCode("ABC");
 
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameAndTenant_Code("admin", "ABC")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password", "encoded_password")).thenReturn(true);
         when(jwtService.generateToken(anyLong(), anyString(), anyLong(), any(Role.class))).thenReturn("jwt-token");
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArguments()[0]);
@@ -96,8 +97,9 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest();
         request.setUsername("unknown");
         request.setPassword("password");
+        request.setTenantCode("ABC");
         
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameAndTenant_Code("unknown", "ABC")).thenReturn(Optional.empty());
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
     }
@@ -108,8 +110,9 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest();
         request.setUsername("admin");
         request.setPassword("password");
+        request.setTenantCode("ABC");
 
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameAndTenant_Code("admin", "ABC")).thenReturn(Optional.of(user));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
     }

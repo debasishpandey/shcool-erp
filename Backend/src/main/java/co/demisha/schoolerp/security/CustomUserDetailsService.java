@@ -16,9 +16,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-                
+        throw new UsernameNotFoundException("Global username lookup is disabled. Use tenant-aware methods.");
+    }
+
+    public UserDetails loadSuperAdminById(Long id) throws UsernameNotFoundException {
+        User user = userRepository.findByIdAndTenantIsNull(id)
+                .orElseThrow(() -> new UsernameNotFoundException("Super admin not found"));
         return new SecurityUser(user);
     }
     

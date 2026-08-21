@@ -40,13 +40,16 @@ public class AuthService {
             user = userRepository.findByUsernameAndTenant_Code(request.getUsername(), request.getTenantCode())
                     .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
         } else {
-            user = userRepository.findByUsername(request.getUsername())
+            user = userRepository.findByUsernameAndTenantIsNull(request.getUsername())
                     .orElseThrow(() -> new BadCredentialsException("Invalid username or password (tenant code required for school users)"));
+            if (user.getRole() != co.demisha.schoolerp.role.Role.SUPER_ADMIN) {
+                throw new BadCredentialsException("Tenant code required for school users");
+            }
         }
 
         Tenant tenant = user.getTenant();
 
-        if (!tenant.isActive()) {
+        if (tenant != null && !tenant.isActive()) {
             throw new BadCredentialsException("Tenant is inactive");
         }
 
@@ -58,7 +61,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username or password");
         }
 
-        String accessToken = jwtService.generateToken(user.getId(), user.getUsername(), tenant.getId(), user.getRole());
+        String accessToken = jwtService.generateToken(user.getId(), user.getUsername(), tenant != null ? tenant.getId() : null, user.getRole());
         RefreshToken refreshToken = createRefreshToken(user);
 
         return LoginResponse.builder()
@@ -82,11 +85,11 @@ public class AuthService {
         User user = refreshToken.getUser();
         Tenant tenant = user.getTenant();
 
-        if (!user.isActive() || !tenant.isActive()) {
+        if (!user.isActive() || (tenant != null && !tenant.isActive())) {
             throw new BadCredentialsException("Account or tenant is inactive");
         }
 
-        String accessToken = jwtService.generateToken(user.getId(), user.getUsername(), tenant.getId(), user.getRole());
+        String accessToken = jwtService.generateToken(user.getId(), user.getUsername(), tenant != null ? tenant.getId() : null, user.getRole());
         
         // Optionally rotate refresh token here, but we'll just reuse it until expiration for simplicity
         return LoginResponse.builder()
@@ -127,9 +130,9 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .tenantId(user.getTenant().getId())
-                .tenantCode(user.getTenant().getCode())
-                .tenantName(user.getTenant().getName())
+                .tenantId(user.getTenant() != null ? user.getTenant().getId() : null)
+                .tenantCode(user.getTenant() != null ? user.getTenant().getCode() : null)
+                .tenantName(user.getTenant() != null ? user.getTenant().getName() : null)
                 .build();
     }
 }

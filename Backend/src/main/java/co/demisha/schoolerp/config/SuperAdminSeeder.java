@@ -26,6 +26,12 @@ public class SuperAdminSeeder implements CommandLineRunner {
     @Value("${app.seed.super-admin:true}")
     private boolean seedSuperAdmin;
 
+    @Value("${app.seed.super-admin.username:superadmin}")
+    private String superAdminUsername;
+
+    @Value("${app.seed.super-admin.password:superadmin}")
+    private String superAdminPassword;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -34,29 +40,15 @@ public class SuperAdminSeeder implements CommandLineRunner {
             return;
         }
 
-        // Check if there is already a super admin tenant
-        Tenant sysTenant = tenantRepository.findByCode("SYSTEM")
-                .orElseGet(() -> {
-                    log.info("Creating SYSTEM tenant for SUPER_ADMIN...");
-                    return tenantRepository.save(Tenant.builder()
-                            .code("SYSTEM")
-                            .name("System Administration")
-                            .type(co.demisha.schoolerp.tenant.SchoolType.PRIVATE)
-                            .board(co.demisha.schoolerp.tenant.Board.OTHER)
-                            .active(true)
-                            .build());
-                });
-
-        if (!userRepository.existsByUsername("superadmin")) {
+        if (!userRepository.findByUsernameAndTenantIsNull(superAdminUsername).isPresent()) {
             log.info("Creating default superadmin user...");
             User superAdmin = User.builder()
-                    .username("superadmin")
-                    // In a real app, inject this via ENV VAR. Hardcoding for this seed script convenience.
-                    .password(passwordEncoder.encode("superadmin"))
+                    .username(superAdminUsername)
+                    .password(passwordEncoder.encode(superAdminPassword))
                     .name("Super Administrator")
                     .email("admin@schoolerp.com")
                     .role(Role.SUPER_ADMIN)
-                    .tenant(sysTenant)
+                    .tenant(null)
                     .active(true)
                     .build();
             userRepository.save(superAdmin);

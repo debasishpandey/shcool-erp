@@ -45,11 +45,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             userId = jwtService.extractUserId(jwt);
             tenantId = jwtService.extractTenantId(jwt);
 
-            if (userId != null && tenantId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Set TenantContext FIRST so that any repositories used downstream know the tenant
-                TenantContext.setTenantId(tenantId);
+            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails;
                 
-                UserDetails userDetails = this.userDetailsService.loadUserByIdAndTenantId(userId, tenantId);
+                if (tenantId != null) {
+                    // Set TenantContext FIRST so that any repositories used downstream know the tenant
+                    TenantContext.setTenantId(tenantId);
+                    userDetails = this.userDetailsService.loadUserByIdAndTenantId(userId, tenantId);
+                } else {
+                    userDetails = this.userDetailsService.loadSuperAdminById(userId);
+                }
                 
                 if (jwtService.isTokenValid(jwt) && userDetails.isEnabled()) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

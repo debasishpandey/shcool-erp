@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "tenant")
-    Optional<User> findByUsername(String username);
+    Optional<User> findByUsernameAndTenantIsNull(String username);
     
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "tenant")
     Optional<User> findByUsernameAndTenant_Code(String username, String tenantCode);
@@ -22,7 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     void deleteByTenantId(Long tenantId);
     
-    boolean existsByUsernameAndTenantId(String username, Long tenantId);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "tenant")
+    Optional<User> findByIdAndTenantIsNull(Long id);
     
-    boolean existsByUsername(String username);
+    boolean existsByUsernameAndTenantId(String username, Long tenantId);
 }
