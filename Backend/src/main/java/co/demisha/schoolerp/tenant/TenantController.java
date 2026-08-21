@@ -55,4 +55,11 @@ public class TenantController {
             @Valid @RequestBody co.demisha.schoolerp.tenant.dto.SchoolAdminCreateRequest request) {
         return ResponseEntity.ok(ApiResponse.success("School admin created successfully", tenantService.createSchoolAdmin(id, request)));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteTenant(@PathVariable Long id) {
+        tenantService.deleteTenant(id);
+        return ResponseEntity.ok(ApiResponse.success("Tenant deleted successfully", null));
+    }
 }

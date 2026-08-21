@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, MoreVertical, Building, Loader2, Search, Filter, Eye, Edit2, X, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, MoreVertical, Building, Loader2, Search, Filter, Eye, Edit2, X, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { tenantService } from '../../services/tenantService';
 import type { Tenant, TenantCreateRequest, TenantUpdateRequest, SchoolAdminCreateRequest, UserResponse } from '../../types';
 
@@ -160,6 +160,22 @@ const Tenants = () => {
     }
   };
 
+  const handleDelete = async (tenant: Tenant) => {
+    if (!window.confirm(`Are you absolutely sure you want to delete ${tenant.name}? This will permanently remove the school and ALL its users. This action cannot be undone.`)) {
+      return;
+    }
+    setActiveDropdown(null);
+    try {
+      await tenantService.deleteTenant(tenant.id);
+      setSuccessMsg('School deleted successfully');
+      fetchTenants();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      console.error('Failed to delete tenant', err);
+      alert(err.response?.data?.message || 'Failed to delete school');
+    }
+  };
+
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminFormError('');
@@ -264,7 +280,7 @@ const Tenants = () => {
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+          <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-visible">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -330,6 +346,12 @@ const Tenants = () => {
                             >
                               <AlertTriangle className="w-4 h-4" /> {tenant.active ? 'Deactivate' : 'Activate'}
                             </button>
+                            <button
+                              onClick={() => handleDelete(tenant)}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </button>
                           </div>
                         </div>
                       )}
@@ -376,6 +398,12 @@ const Tenants = () => {
                             className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                           >
                             <AlertTriangle className="w-4 h-4" /> {tenant.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(tenant)}
+                            className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
                           </button>
                         </div>
                       </div>

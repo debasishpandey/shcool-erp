@@ -30,5 +30,9 @@ export const tenantService = {
   createSchoolAdmin: async (tenantId: number, data: import('../types').SchoolAdminCreateRequest): Promise<import('../types').UserResponse> => {
     const response = await api.post(`/tenants/${tenantId}/admin`, data);
     return response.data.data;
+  },
+
+  deleteTenant: async (id: number): Promise<void> => {
+    await api.delete(`/tenants/${id}`);
   }
 };

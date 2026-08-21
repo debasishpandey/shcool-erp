@@ -20,6 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     List<User> findByTenantId(Long tenantId);
     
+    void deleteByTenantId(Long tenantId);
+    
     boolean existsByUsernameAndTenantId(String username, Long tenantId);
     
     boolean existsByUsername(String username);

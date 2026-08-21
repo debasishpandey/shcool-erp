@@ -131,4 +131,13 @@ public class TenantService {
                 .tenantName(tenant.getName())
                 .build();
     }
+
+    @Transactional
+    public void deleteTenant(Long id) {
+        Tenant tenant = tenantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
+        
+        userRepository.deleteByTenantId(id);
+        tenantRepository.delete(tenant);
+    }
 }
