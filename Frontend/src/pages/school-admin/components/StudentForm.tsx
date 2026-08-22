@@ -9,6 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../context/ToastContext";
 import { Select } from "../../../components/ui/select";
 import { FormLabel, FormControl, FormMessage, FormItem } from "../../../components/forms/form";
+import { handleApiValidationErrors } from "../../../utils/errorHandler";
 
 const studentSchema = z.object({
   admissionNumber: z.string().min(1, "Admission number is required"),
@@ -27,7 +28,7 @@ export type StudentFormValues = z.infer<typeof studentSchema>;
 interface StudentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: StudentFormValues) => void;
+  onSubmit: (data: StudentFormValues) => Promise<void>;
   isSubmitting: boolean;
   editingStudent: StudentResponse | null;
 }
@@ -49,6 +50,16 @@ export function StudentForm({ open, onOpenChange, onSubmit, isSubmitting, editin
     }
   });
 
+  const handleFormSubmit = async (data: StudentFormValues) => {
+    try {
+      await onSubmit(data);
+    } catch (err: any) {
+      if (!handleApiValidationErrors(err, form, showToast)) {
+        showToast("Unable to save student. Please try again.", "error");
+      }
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(val: boolean) => !isSubmitting && onOpenChange(val)}>
       <DialogHeader>
@@ -58,7 +69,7 @@ export function StudentForm({ open, onOpenChange, onSubmit, isSubmitting, editin
         </DialogDescription>
       </DialogHeader>
       <div className="overflow-y-auto max-h-[60vh] py-4 px-1 -mx-1">
-        <form id="student-form" onSubmit={form.handleSubmit(onSubmit, (errors) => {
+        <form id="student-form" onSubmit={form.handleSubmit(handleFormSubmit, (errors) => {
           const fieldLabels: Record<string, string> = { admissionNumber: "Admission Number", name: "Student Name", mobileNumber: "Mobile Number" };
           const missingFields = Object.keys(errors).map(key => fieldLabels[key] || key);
           showToast(`Please complete the required fields: ${missingFields.join(", ")}`, "error");

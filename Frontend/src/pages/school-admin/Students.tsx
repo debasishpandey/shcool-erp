@@ -99,9 +99,6 @@ export default function Students() {
       }
       setIsFormOpen(false);
       fetchStudents();
-    } catch (err) {
-      console.error(err);
-      showToast("Unable to save student. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }

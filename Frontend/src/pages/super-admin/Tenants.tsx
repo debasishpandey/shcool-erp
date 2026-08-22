@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { FormLabel, FormControl, FormMessage, FormItem } from "../../components/forms/form";
 import { useToast } from "../../context/ToastContext";
+import { handleApiValidationErrors } from '../../utils/errorHandler';
 
 const tenantSchema = z.object({
   name: z.string().min(1, "School Name is required"),
@@ -156,7 +157,9 @@ const Tenants = () => {
         setIsModalOpen(false);
       }, 1500);
     } catch (err: any) {
-      setFormError(err.response?.data?.message || `Failed to ${modalMode.toLowerCase()} school. Ensure code is unique.`);
+      if (!handleApiValidationErrors(err, form, showToast)) {
+        setFormError(err.response?.data?.message || `Failed to ${modalMode.toLowerCase()} school. Ensure code is unique.`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -208,7 +211,9 @@ const Tenants = () => {
       setIsAdminFormOpen(false);
       showToast('School administrator created successfully', 'success');
     } catch (err: any) {
-      setAdminFormError(err.response?.data?.message || 'Failed to create admin');
+      if (!handleApiValidationErrors(err, adminForm, showToast)) {
+        setAdminFormError(err.response?.data?.message || 'Failed to create admin');
+      }
     } finally {
       setIsAdminSubmitting(false);
     }

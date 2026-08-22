@@ -27,7 +27,7 @@ public class StudentUpdateRequest {
     private String fatherName;
     private String motherName;
 
-    @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid Indian mobile number")
+    @Pattern(regexp = "^$|^[6-9]\\d{9}$", message = "Invalid Indian mobile number")
     private String mobileNumber;
 
     private String address;

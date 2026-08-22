@@ -16,6 +16,8 @@ public class ApiResponse<T> {
     private String message;
     private T data;
     
+    private java.util.Map<String, String> errors;
+    
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 

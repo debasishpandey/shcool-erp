@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { FormLabel, FormControl, FormMessage, FormItem } from "../../components/forms/form";
 import { useToast } from "../../context/ToastContext";
+import { handleApiValidationErrors } from '../../utils/errorHandler';
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -37,7 +38,9 @@ const SuperAdminLogin = () => {
       login(responseData.accessToken, responseData.refreshToken, responseData.user);
       navigate('/super-admin');
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Invalid username or password', 'error');
+      if (!handleApiValidationErrors(err, form, showToast)) {
+        showToast('Invalid username or password', 'error');
+      }
     } finally {
       setIsLoading(false);
     }

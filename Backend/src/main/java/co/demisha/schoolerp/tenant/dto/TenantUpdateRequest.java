@@ -22,10 +22,10 @@ public class TenantUpdateRequest {
     private String district;
     private String state;
     
-    @jakarta.validation.constraints.Pattern(regexp = "^\\d{6}$", message = "PIN code must be 6 digits")
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^\\d{6}$", message = "PIN code must be 6 digits")
     private String pinCode;
 
-    @jakarta.validation.constraints.Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid Indian phone number")
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^[6-9]\\d{9}$", message = "Invalid Indian phone number")
     private String phone;
 
     @jakarta.validation.constraints.Email(message = "Invalid email format")
