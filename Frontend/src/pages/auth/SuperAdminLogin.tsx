@@ -1,39 +1,52 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { FormLabel, FormControl, FormMessage, FormItem } from "../../components/forms/form";
+import { useToast } from "../../context/ToastContext";
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const SuperAdminLogin = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!username || !password) {
-      setError('Please enter both username and password');
-      return;
-    }
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' }
+  });
 
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     
     try {
-      const data = await authService.login({ username, password });
-      login(data.accessToken, data.refreshToken, data.user);
+      const responseData = await authService.login(data);
+      login(responseData.accessToken, responseData.refreshToken, responseData.user);
       navigate('/super-admin');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid username or password');
+      showToast(err.response?.data?.message || 'Invalid username or password', 'error');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const onInvalid = (errors: any) => {
+    const fieldLabels: Record<string, string> = { username: 'Username', password: 'Password' };
+    const errorFields = Object.keys(errors).map(key => fieldLabels[key] || key);
+    showToast(`Please complete the required fields: ${errorFields.join(", ")}`, 'error');
   };
 
   return (
@@ -50,59 +63,45 @@ const SuperAdminLogin = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-[var(--color-danger)]/10 text-[var(--color-danger)] p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
-            
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-[var(--color-text-dark)]">
-                Username
-              </label>
-              <div className="mt-1">
+          <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+            <FormItem>
+              <FormLabel required>Username</FormLabel>
+              <FormControl>
                 <input
-                  id="username"
-                  name="username"
                   type="text"
                   autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  {...form.register("username")}
                   className="appearance-none block w-full px-3 py-3 sm:py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-base sm:text-sm"
                 />
-              </div>
-            </div>
+              </FormControl>
+              {form.formState.errors.username && <FormMessage>{form.formState.errors.username.message}</FormMessage>}
+            </FormItem>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-dark)]">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-3 sm:py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-base sm:text-sm"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 flex items-center pr-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                  )}
-                </button>
-              </div>
-            </div>
+            <FormItem>
+              <FormLabel required>Password</FormLabel>
+              <FormControl>
+                <div className="mt-1 relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    {...form.register("password")}
+                    className="appearance-none block w-full px-3 py-3 sm:py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] text-base sm:text-sm"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </FormControl>
+              {form.formState.errors.password && <FormMessage>{form.formState.errors.password.message}</FormMessage>}
+            </FormItem>
 
             <div>
               <button

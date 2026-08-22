@@ -6,6 +6,7 @@ import type { StudentResponse } from "../../../types";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { useToast } from "../../../context/ToastContext";
 import { Select } from "../../../components/ui/select";
 import { FormLabel, FormControl, FormMessage, FormItem } from "../../../components/forms/form";
 
@@ -32,6 +33,7 @@ interface StudentFormProps {
 }
 
 export function StudentForm({ open, onOpenChange, onSubmit, isSubmitting, editingStudent }: StudentFormProps) {
+  const { showToast } = useToast();
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
@@ -56,10 +58,14 @@ export function StudentForm({ open, onOpenChange, onSubmit, isSubmitting, editin
         </DialogDescription>
       </DialogHeader>
       <div className="overflow-y-auto max-h-[60vh] py-4 px-1 -mx-1">
-        <form id="student-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form id="student-form" onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          const fieldLabels: Record<string, string> = { admissionNumber: "Admission Number", name: "Student Name", mobileNumber: "Mobile Number" };
+          const missingFields = Object.keys(errors).map(key => fieldLabels[key] || key);
+          showToast(`Please complete the required fields: ${missingFields.join(", ")}`, "error");
+        })} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormItem>
-              <FormLabel>Admission Number *</FormLabel>
+              <FormLabel required>Admission Number</FormLabel>
               <FormControl>
                 <Input {...form.register("admissionNumber")} disabled={!!editingStudent} />
               </FormControl>
@@ -67,7 +73,7 @@ export function StudentForm({ open, onOpenChange, onSubmit, isSubmitting, editin
             </FormItem>
 
             <FormItem>
-              <FormLabel>Student Name *</FormLabel>
+              <FormLabel required>Student Name</FormLabel>
               <FormControl>
                 <Input {...form.register("name")} />
               </FormControl>

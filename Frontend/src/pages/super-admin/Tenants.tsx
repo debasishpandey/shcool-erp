@@ -1,7 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, MoreVertical, Building, Loader2, Search, Filter, Eye, Edit2, X, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { tenantService } from '../../services/tenantService';
-import type { Tenant, TenantCreateRequest, TenantUpdateRequest, SchoolAdminCreateRequest, UserResponse } from '../../types';
+import type { Tenant, TenantCreateRequest, TenantUpdateRequest, UserResponse } from '../../types';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { FormLabel, FormControl, FormMessage, FormItem } from "../../components/forms/form";
+import { useToast } from "../../context/ToastContext";
+
+const tenantSchema = z.object({
+  name: z.string().min(1, "School Name is required"),
+  code: z.string().min(1, "School Code is required"),
+  type: z.enum(['PRIVATE', 'GOVERNMENT', 'GOVERNMENT_AIDED']),
+  board: z.enum(['CBSE', 'ICSE', 'BSE_ODISHA', 'CHSE_ODISHA', 'OTHER']),
+  address: z.string().optional().or(z.literal('')),
+  city: z.string().optional().or(z.literal('')),
+  district: z.string().optional().or(z.literal('')),
+  state: z.string().optional().or(z.literal('')),
+  pinCode: z.string().regex(/^\d{6}$/, "Must be a 6 digit PIN code").optional().or(z.literal('')),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Must be a valid 10-digit Indian phone number").optional().or(z.literal('')),
+  email: z.string().email("Invalid email address").optional().or(z.literal('')),
+  website: z.string().url("Invalid URL").optional().or(z.literal(''))
+});
+
+export type TenantFormValues = z.infer<typeof tenantSchema>;
+
+const adminSchema = z.object({
+  name: z.string().min(1, "Full Name is required"),
+  username: z.string().min(1, "Username is required"),
+  mobileNumber: z.string().regex(/^[6-9]\d{9}$/, "Invalid Indian mobile number").min(1, "Mobile Number is required"),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+export type AdminFormValues = z.infer<typeof adminSchema>;
 
 const Tenants = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -18,34 +54,30 @@ const Tenants = () => {
   
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState<TenantUpdateRequest>({
-    code: '',
-    name: '',
-    type: 'PRIVATE',
-    board: 'CBSE',
-    address: '',
-    city: '',
-    district: '',
-    state: '',
-    pinCode: '',
-    phone: '',
-    email: '',
-    website: ''
-  });
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-
+  
   // Admin Form state
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
-  const [adminFormData, setAdminFormData] = useState<SchoolAdminCreateRequest>({
-    name: '', username: '', mobileNumber: '', email: '', password: ''
-  });
   const [createdAdmin, setCreatedAdmin] = useState<UserResponse | null>(null);
   const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
   const [adminFormError, setAdminFormError] = useState('');
+
+  const { showToast } = useToast();
+
+  const form = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: {
+      code: '', name: '', type: 'PRIVATE', board: 'CBSE', address: '', city: '', district: '', state: '', pinCode: '', phone: '', email: '', website: ''
+    }
+  });
+
+  const adminForm = useForm<AdminFormValues>({
+    resolver: zodResolver(adminSchema),
+    defaultValues: {
+      name: '', username: '', mobileNumber: '', email: '', password: '', confirmPassword: ''
+    }
+  });
 
   const fetchTenants = async () => {
     try {
@@ -63,30 +95,23 @@ const Tenants = () => {
     fetchTenants();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   const openCreateModal = () => {
     setModalMode('CREATE');
-    setFormData({
-      code: '', name: '', type: 'PRIVATE', board: 'CBSE',
-      address: '', city: '', district: '', state: '', pinCode: '', phone: '', email: '', website: ''
+    form.reset({
+      code: '', name: '', type: 'PRIVATE', board: 'CBSE', address: '', city: '', district: '', state: '', pinCode: '', phone: '', email: '', website: ''
     });
     setFormError('');
-    setSuccessMsg('');
     setIsModalOpen(true);
   };
 
   const openEditModal = (tenant: Tenant) => {
     setModalMode('EDIT');
     setSelectedTenant(tenant);
-    setFormData({
+    form.reset({
       code: tenant.code,
       name: tenant.name,
-      type: tenant.type || 'PRIVATE',
-      board: tenant.board || 'CBSE',
+      type: (tenant.type as any) || 'PRIVATE',
+      board: (tenant.board as any) || 'CBSE',
       address: tenant.address || '',
       city: tenant.city || '',
       district: tenant.district || '',
@@ -97,7 +122,6 @@ const Tenants = () => {
       website: tenant.website || ''
     });
     setFormError('');
-    setSuccessMsg('');
     setIsModalOpen(true);
     setActiveDropdown(null);
   };
@@ -108,43 +132,40 @@ const Tenants = () => {
     setIsAdminFormOpen(false);
     setCreatedAdmin(null);
     setAdminFormError('');
-    setAdminFormData({ name: '', username: '', mobileNumber: '', email: '', password: '' });
+    adminForm.reset({ name: '', username: '', mobileNumber: '', email: '', password: '', confirmPassword: '' });
     setIsModalOpen(true);
     setActiveDropdown(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmitTenant = async (data: TenantFormValues) => {
     setFormError('');
-    setSuccessMsg('');
-    
-    if (!formData.name || !formData.code || !formData.type || !formData.board) {
-      setFormError('Please fill in all required fields (*)');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       if (modalMode === 'CREATE') {
-        const createData: TenantCreateRequest = { ...formData, code: formData.code.toUpperCase() };
+        const createData: TenantCreateRequest = { ...data, code: data.code.toUpperCase() };
         await tenantService.createTenant(createData);
-        setSuccessMsg('School created successfully');
+        showToast('School created successfully', 'success');
       } else if (modalMode === 'EDIT' && selectedTenant) {
-        const updateData: TenantUpdateRequest = { ...formData, code: formData.code.toUpperCase() };
+        const updateData: TenantUpdateRequest = { ...data, code: data.code.toUpperCase() };
         await tenantService.updateTenant(selectedTenant.id, updateData);
-        setSuccessMsg('School updated successfully');
+        showToast('School updated successfully', 'success');
       }
       
       fetchTenants();
       setTimeout(() => {
         setIsModalOpen(false);
-        setSuccessMsg('');
       }, 1500);
     } catch (err: any) {
       setFormError(err.response?.data?.message || `Failed to ${modalMode.toLowerCase()} school. Ensure code is unique.`);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onInvalidTenant = (errors: any) => {
+    const fieldLabels: Record<string, string> = { name: 'School Name', code: 'School Code', type: 'School Type', board: 'Board' };
+    const errorFields = Object.keys(errors).map(key => fieldLabels[key] || key);
+    showToast(`Please complete the required fields: ${errorFields.join(", ")}`, 'error');
   };
 
   const toggleStatus = async (tenant: Tenant) => {
@@ -167,36 +188,36 @@ const Tenants = () => {
     setActiveDropdown(null);
     try {
       await tenantService.deleteTenant(tenant.id);
-      setSuccessMsg('School deleted successfully');
+      showToast('School deleted successfully', 'success');
       fetchTenants();
-      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
       console.error('Failed to delete tenant', err);
-      alert(err.response?.data?.message || 'Failed to delete school');
+      showToast(err.response?.data?.message || 'Failed to delete school', 'error');
     }
   };
 
-  const handleAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmitAdmin = async (data: AdminFormValues) => {
     setAdminFormError('');
     if (!selectedTenant) return;
 
-    if (adminFormData.password !== (document.getElementById('confirmPassword') as HTMLInputElement).value) {
-      setAdminFormError('Passwords do not match');
-      return;
-    }
-
     setIsAdminSubmitting(true);
     try {
-      const newAdmin = await tenantService.createSchoolAdmin(selectedTenant.id, adminFormData);
+      const { confirmPassword, ...adminData } = data;
+      const newAdmin = await tenantService.createSchoolAdmin(selectedTenant.id, adminData);
       setCreatedAdmin(newAdmin);
       setIsAdminFormOpen(false);
-      setSuccessMsg('School administrator created successfully');
+      showToast('School administrator created successfully', 'success');
     } catch (err: any) {
       setAdminFormError(err.response?.data?.message || 'Failed to create admin');
     } finally {
       setIsAdminSubmitting(false);
     }
+  };
+
+  const onInvalidAdmin = (errors: any) => {
+    const fieldLabels: Record<string, string> = { name: 'Full Name', username: 'Username', mobileNumber: 'Mobile Number', password: 'Password', confirmPassword: 'Confirm Password' };
+    const errorFields = Object.keys(errors).map(key => fieldLabels[key] || key);
+    showToast(`Please complete the required fields: ${errorFields.join(", ")}`, 'error');
   };
 
   const filteredTenants = tenants.filter(t => {
@@ -279,7 +300,6 @@ const Tenants = () => {
         </div>
       ) : (
         <>
-          {/* Desktop Table View */}
           <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-visible">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -361,8 +381,6 @@ const Tenants = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-4">
             {filteredTenants.map((tenant) => (
               <div key={tenant.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
@@ -436,12 +454,10 @@ const Tenants = () => {
         </>
       )}
 
-      {/* Full-screen Modal for Create/Edit/View */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-gray-50 sm:bg-black/40 sm:backdrop-blur-sm overflow-hidden">
           <div className="w-full h-full sm:h-auto sm:max-h-[90vh] bg-white sm:rounded-xl shadow-2xl flex flex-col sm:max-w-3xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-white">
               <h2 className="text-xl font-bold text-gray-900">
                 {modalMode === 'CREATE' ? 'Add New School' : modalMode === 'EDIT' ? 'Edit School' : 'School Details'}
@@ -454,14 +470,7 @@ const Tenants = () => {
               </button>
             </div>
 
-            {/* Content Body */}
             <div className="flex-1 overflow-y-auto p-6">
-              {successMsg && (
-                <div className="mb-6 flex items-center gap-2 bg-green-50 text-green-700 p-4 rounded-lg text-sm font-medium border border-green-200">
-                  <CheckCircle className="w-5 h-5" />
-                  {successMsg}
-                </div>
-              )}
               
               {formError && (
                 <div className="mb-6 flex items-start gap-2 bg-red-50 text-red-700 p-4 rounded-lg text-sm font-medium border border-red-200">
@@ -547,7 +556,6 @@ const Tenants = () => {
                     </div>
                   </div>
 
-                  {/* Admin Section */}
                   <div className="pt-4 border-t border-gray-100">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">Administrator</h3>
@@ -596,7 +604,7 @@ const Tenants = () => {
                         </div>
                       </div>
                     ) : isAdminFormOpen ? (
-                      <form onSubmit={handleAdminSubmit} className="bg-gray-50 p-5 rounded-lg border border-gray-200 space-y-4">
+                      <form onSubmit={adminForm.handleSubmit(onSubmitAdmin, onInvalidAdmin)} className="bg-gray-50 p-5 rounded-lg border border-gray-200 space-y-4">
                         {adminFormError && (
                           <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-md text-sm">
                             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -604,59 +612,73 @@ const Tenants = () => {
                           </div>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                            <input
-                              type="text" required
-                              value={adminFormData.name}
-                              onChange={(e) => setAdminFormData({...adminFormData, name: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
-                            <input
-                              type="text" required
-                              value={adminFormData.username}
-                              onChange={(e) => setAdminFormData({...adminFormData, username: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
-                            <input
-                              type="tel" required pattern="[6-9]\d{9}"
-                              title="10-digit Indian mobile number"
-                              value={adminFormData.mobileNumber}
-                              onChange={(e) => setAdminFormData({...adminFormData, mobileNumber: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input
-                              type="email"
-                              value={adminFormData.email}
-                              onChange={(e) => setAdminFormData({...adminFormData, email: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                            <input
-                              type="password" required minLength={6}
-                              value={adminFormData.password}
-                              onChange={(e) => setAdminFormData({...adminFormData, password: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
-                            <input
-                              type="password" required minLength={6} id="confirmPassword"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
+                          <FormItem>
+                            <FormLabel required>Full Name</FormLabel>
+                            <FormControl>
+                              <input
+                                type="text"
+                                {...adminForm.register("name")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.name && <FormMessage>{adminForm.formState.errors.name.message}</FormMessage>}
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel required>Username</FormLabel>
+                            <FormControl>
+                              <input
+                                type="text"
+                                {...adminForm.register("username")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.username && <FormMessage>{adminForm.formState.errors.username.message}</FormMessage>}
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel required>Mobile Number</FormLabel>
+                            <FormControl>
+                              <input
+                                type="tel"
+                                {...adminForm.register("mobileNumber")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                placeholder="10-digit number"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.mobileNumber && <FormMessage>{adminForm.formState.errors.mobileNumber.message}</FormMessage>}
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <input
+                                type="email"
+                                {...adminForm.register("email")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.email && <FormMessage>{adminForm.formState.errors.email.message}</FormMessage>}
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel required>Password</FormLabel>
+                            <FormControl>
+                              <input
+                                type="password"
+                                {...adminForm.register("password")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.password && <FormMessage>{adminForm.formState.errors.password.message}</FormMessage>}
+                          </FormItem>
+                          <FormItem>
+                            <FormLabel required>Confirm Password</FormLabel>
+                            <FormControl>
+                              <input
+                                type="password"
+                                {...adminForm.register("confirmPassword")}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              />
+                            </FormControl>
+                            {adminForm.formState.errors.confirmPassword && <FormMessage>{adminForm.formState.errors.confirmPassword.message}</FormMessage>}
+                          </FormItem>
                         </div>
                         <div className="flex justify-end gap-3 pt-2">
                           <button
@@ -684,155 +706,185 @@ const Tenants = () => {
                   </div>
                 </div>
               ) : (
-                <form id="school-form" onSubmit={handleSubmit} className="space-y-8">
-                  {/* Basic Info */}
+                <form id="school-form" onSubmit={form.handleSubmit(onSubmitTenant, onInvalidTenant)} className="space-y-8">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span>
                       Basic Information
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">School Name *</label>
-                        <input
-                          name="name" type="text" required
-                          value={formData.name} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                          placeholder="e.g. Lincoln High School"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">School Code *</label>
-                        <input
-                          name="code" type="text" required
-                          value={formData.code} onChange={handleInputChange}
-                          disabled={modalMode === 'EDIT'}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none uppercase disabled:bg-gray-100 disabled:text-gray-500"
-                          placeholder="e.g. LINCOLN01"
-                        />
+                      <FormItem>
+                        <FormLabel required>School Name</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("name")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="e.g. Lincoln High School"
+                          />
+                        </FormControl>
+                        {form.formState.errors.name && <FormMessage>{form.formState.errors.name.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel required>School Code</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("code")}
+                            disabled={modalMode === 'EDIT'}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none uppercase disabled:bg-gray-100 disabled:text-gray-500"
+                            placeholder="e.g. LINCOLN01"
+                          />
+                        </FormControl>
+                        {form.formState.errors.code && <FormMessage>{form.formState.errors.code.message}</FormMessage>}
                         {modalMode === 'EDIT' && <p className="text-xs text-gray-500 mt-1">Code cannot be changed after creation.</p>}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">School Type *</label>
-                        <select
-                          name="type" required
-                          value={formData.type} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none bg-white"
-                        >
-                          <option value="PRIVATE">Private</option>
-                          <option value="GOVERNMENT">Government</option>
-                          <option value="GOVERNMENT_AIDED">Government Aided</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Board *</label>
-                        <select
-                          name="board" required
-                          value={formData.board} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none bg-white"
-                        >
-                          <option value="CBSE">CBSE</option>
-                          <option value="ICSE">ICSE</option>
-                          <option value="BSE_ODISHA">BSE Odisha</option>
-                          <option value="CHSE_ODISHA">CHSE Odisha</option>
-                          <option value="OTHER">Other</option>
-                        </select>
-                      </div>
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel required>School Type</FormLabel>
+                        <FormControl>
+                          <select
+                            {...form.register("type")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none bg-white"
+                          >
+                            <option value="PRIVATE">Private</option>
+                            <option value="GOVERNMENT">Government</option>
+                            <option value="GOVERNMENT_AIDED">Government Aided</option>
+                          </select>
+                        </FormControl>
+                        {form.formState.errors.type && <FormMessage>{form.formState.errors.type.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel required>Board</FormLabel>
+                        <FormControl>
+                          <select
+                            {...form.register("board")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none bg-white"
+                          >
+                            <option value="CBSE">CBSE</option>
+                            <option value="ICSE">ICSE</option>
+                            <option value="BSE_ODISHA">BSE Odisha</option>
+                            <option value="CHSE_ODISHA">CHSE Odisha</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </FormControl>
+                        {form.formState.errors.board && <FormMessage>{form.formState.errors.board.message}</FormMessage>}
+                      </FormItem>
                     </div>
                   </div>
 
-                  {/* Location Info */}
                   <div className="pt-4 border-t border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
                       Location
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                        <input
-                          name="address" type="text"
-                          value={formData.address} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                          placeholder="e.g. 123 Main Street"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <input
-                          name="city" type="text"
-                          value={formData.city} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                        <input
-                          name="district" type="text"
-                          value={formData.district} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                        <input
-                          name="state" type="text"
-                          value={formData.state} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code</label>
-                        <input
-                          name="pinCode" type="text" pattern="\d{6}"
-                          value={formData.pinCode} onChange={handleInputChange}
-                          title="Must be a 6 digit PIN code"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("address")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="e.g. 123 Main Street"
+                          />
+                        </FormControl>
+                        {form.formState.errors.address && <FormMessage>{form.formState.errors.address.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("city")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                          />
+                        </FormControl>
+                        {form.formState.errors.city && <FormMessage>{form.formState.errors.city.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>District</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("district")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                          />
+                        </FormControl>
+                        {form.formState.errors.district && <FormMessage>{form.formState.errors.district.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("state")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                          />
+                        </FormControl>
+                        {form.formState.errors.state && <FormMessage>{form.formState.errors.state.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>PIN Code</FormLabel>
+                        <FormControl>
+                          <input
+                            type="text"
+                            {...form.register("pinCode")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="6 digits"
+                          />
+                        </FormControl>
+                        {form.formState.errors.pinCode && <FormMessage>{form.formState.errors.pinCode.message}</FormMessage>}
+                      </FormItem>
                     </div>
                   </div>
 
-                  {/* Contact Info */}
                   <div className="pt-4 border-t border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">3</span>
                       Contact Information
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <input
-                          name="phone" type="tel" pattern="[6-9]\d{9}"
-                          value={formData.phone} onChange={handleInputChange}
-                          title="Must be a valid 10-digit Indian phone number starting with 6-9"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                          name="email" type="email"
-                          value={formData.email} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                        <input
-                          name="website" type="url"
-                          value={formData.website} onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                          placeholder="https://"
-                        />
-                      </div>
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <input
+                            type="tel"
+                            {...form.register("phone")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="10-digit number"
+                          />
+                        </FormControl>
+                        {form.formState.errors.phone && <FormMessage>{form.formState.errors.phone.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <input
+                            type="email"
+                            {...form.register("email")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                          />
+                        </FormControl>
+                        {form.formState.errors.email && <FormMessage>{form.formState.errors.email.message}</FormMessage>}
+                      </FormItem>
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <input
+                            type="url"
+                            {...form.register("website")}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="https://"
+                          />
+                        </FormControl>
+                        {form.formState.errors.website && <FormMessage>{form.formState.errors.website.message}</FormMessage>}
+                      </FormItem>
                     </div>
                   </div>
                 </form>
               )}
             </div>
 
-            {/* Footer */}
             <div className="p-4 sm:px-6 sm:py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
               <button
                 type="button"
